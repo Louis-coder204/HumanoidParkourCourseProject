@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Logs and outputs
+logs/
+train_logs/
+videos/
+*.mp4
+*.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Isaac Sim
+_isaac_sim*
+*.kit
+*.dmp
+.thumbs
+
+# Temp
+tmp/
