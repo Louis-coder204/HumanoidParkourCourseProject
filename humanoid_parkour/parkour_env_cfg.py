@@ -627,7 +627,7 @@ class G1HikingRewards(G1ParkourRewards):
 
     safe_touchdown = RewTerm(
         func=hiking_mdp.safe_touchdown,
-        weight=0.0,
+        weight=0.30,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
@@ -643,7 +643,7 @@ class G1HikingRewards(G1ParkourRewards):
 
     unsafe_touchdown = RewTerm(
         func=hiking_mdp.unsafe_touchdown,
-        weight=0.0,
+        weight=-0.60,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
@@ -659,7 +659,7 @@ class G1HikingRewards(G1ParkourRewards):
 
     swing_clearance = RewTerm(
         func=hiking_mdp.swing_clearance,
-        weight=0.0,
+        weight=-0.10,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
@@ -670,7 +670,7 @@ class G1HikingRewards(G1ParkourRewards):
 
     stance_edge_risk = RewTerm(
         func=hiking_mdp.stance_edge_risk,
-        weight=0.0,
+        weight=-0.08,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
