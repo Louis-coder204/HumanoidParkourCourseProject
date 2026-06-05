@@ -19,6 +19,8 @@ from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import LocomotionVelocityRoughEnvCfg, RewardsCfg
 
+import humanoid_parkour.hiking_mdp as hiking_mdp
+
 ##
 # Pre-defined configs
 ##
@@ -617,8 +619,69 @@ class G1ParkourAdaptiveEnvCfg_PLAY(G1ParkourAdaptiveEnvCfg):
 
 @configclass
 class G1HikingRewards(G1ParkourRewards):
-    """Hiking rewards: extends parkour rewards with foothold safety terms (initially weight=0)."""
-    pass
+    """Hiking rewards: extends parkour rewards with foothold safety terms.
+
+    Safety terms are initially weight=0 (V2: metrics-only phase).
+    Increase weights in V3 to activate foothold safety shaping.
+    """
+
+    safe_touchdown = RewTerm(
+        func=hiking_mdp.safe_touchdown,
+        weight=0.0,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "k": 9,
+            "foot_radius": 0.12,
+            "max_height_var": 0.055,
+            "max_foot_terrain_gap": 0.16,
+            "min_support_rays": 3,
+        },
+    )
+
+    unsafe_touchdown = RewTerm(
+        func=hiking_mdp.unsafe_touchdown,
+        weight=0.0,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "k": 9,
+            "foot_radius": 0.12,
+            "max_height_var": 0.055,
+            "max_foot_terrain_gap": 0.16,
+            "min_support_rays": 3,
+        },
+    )
+
+    swing_clearance = RewTerm(
+        func=hiking_mdp.swing_clearance,
+        weight=0.0,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "min_clearance": 0.08,
+        },
+    )
+
+    stance_edge_risk = RewTerm(
+        func=hiking_mdp.stance_edge_risk,
+        weight=0.0,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "k": 9,
+            "foot_radius": 0.12,
+            "max_height_var": 0.055,
+            "max_foot_terrain_gap": 0.16,
+            "min_support_rays": 3,
+        },
+    )
 
 
 @configclass

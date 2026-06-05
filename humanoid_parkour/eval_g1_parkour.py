@@ -69,6 +69,10 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
+from isaaclab.managers import SceneEntityCfg
+
+from humanoid_parkour.hiking_mdp import _foothold_safe_mask, _detect_first_contact, _nearest_height_patch
+
 
 @hydra_task_config(args_cli.task, args_cli.agent)
 def main(
@@ -136,6 +140,15 @@ def main(
     episode_rew_sum = torch.zeros(n_envs, device=device)
     fall_positions = torch.zeros(n_envs, 3, device=device)
 
+    episode_safe_td = torch.zeros(n_envs, device=device)
+    episode_unsafe_td = torch.zeros(n_envs, device=device)
+    episode_swing_violation_steps = torch.zeros(n_envs, device=device)
+    episode_swing_steps = torch.zeros(n_envs, device=device)
+
+    height_cfg = SceneEntityCfg("height_scanner")
+    contact_cfg = SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link")
+    asset_cfg = SceneEntityCfg("robot", body_names=".*_ankle_roll_link")
+
     results = []
     done_count = 0
     step_count = 0
@@ -153,6 +166,23 @@ def main(
         episode_dist += torch.norm(base_vel_w * dt, dim=-1)
         episode_steps += 1
         episode_rew_sum += rew
+
+        safe_mask, _ = _foothold_safe_mask(
+            env.unwrapped, height_cfg, asset_cfg, k=9, foot_radius=0.12,
+            max_height_var=0.055, max_foot_terrain_gap=0.16, min_support_rays=3,
+        )
+        first_contact = _detect_first_contact(env.unwrapped, contact_cfg)
+        episode_safe_td += (first_contact & safe_mask).float().sum(dim=1)
+        episode_unsafe_td += (first_contact & (~safe_mask)).float().sum(dim=1)
+
+        patch_z, _, foot_pos_w = _nearest_height_patch(env.unwrapped, height_cfg, asset_cfg, k=1)
+        terrain_z = patch_z[..., 0]
+        clearance = foot_pos_w[..., 2] - terrain_z
+        air_time = env.unwrapped.scene.sensors["contact_forces"].data.current_air_time[:, contact_cfg.body_ids]
+        in_swing = air_time > 0.03
+        clearance_violation = (clearance < 0.08) & in_swing
+        episode_swing_violation_steps += clearance_violation.float().sum(dim=1)
+        episode_swing_steps += in_swing.float().sum(dim=1)
 
         tl = log_dict.get("Curriculum/terrain_levels")
         if tl is not None:
@@ -183,6 +213,15 @@ def main(
                 survived_time = float(episode_steps[env_id].item()) * dt
                 dist_traveled = float(episode_dist[env_id].item())
 
+                safe_td = float(episode_safe_td[env_id].item())
+                unsafe_td = float(episode_unsafe_td[env_id].item())
+                total_td = safe_td + unsafe_td
+                safe_td_rate = safe_td / total_td if total_td > 0 else -1.0
+
+                total_swing = float(episode_swing_steps[env_id].item())
+                swing_viol = float(episode_swing_violation_steps[env_id].item())
+                swing_viol_rate = swing_viol / total_swing if total_swing > 0 else 0.0
+
                 results.append({
                     "episode_idx": done_count,
                     "env_id": env_id,
@@ -198,6 +237,11 @@ def main(
                     "track_reward": track_rw,
                     "fall_pos_x": float(fall_positions[env_id, 0].item()),
                     "fall_pos_y": float(fall_positions[env_id, 1].item()),
+                    "safe_touchdown_count": safe_td,
+                    "unsafe_touchdown_count": unsafe_td,
+                    "safe_touchdown_rate": safe_td_rate,
+                    "swing_clearance_violation_steps": swing_viol,
+                    "swing_clearance_violation_rate": swing_viol_rate,
                 })
                 done_count += 1
 
@@ -205,6 +249,10 @@ def main(
             episode_steps[done_indices] = 0
             episode_terrain[done_indices] = 0.0
             episode_rew_sum[done_indices] = 0.0
+            episode_safe_td[done_indices] = 0.0
+            episode_unsafe_td[done_indices] = 0.0
+            episode_swing_violation_steps[done_indices] = 0.0
+            episode_swing_steps[done_indices] = 0.0
 
         step_count += 1
         if step_count % 200 == 0:
@@ -239,21 +287,22 @@ def main(
     trs = [r["track_reward"] for r in results]
     mean_tr = sum(trs) / len(trs) if trs else 0
 
+    safe_td_rates = [r["safe_touchdown_rate"] for r in results if r["safe_touchdown_rate"] >= 0]
+    mean_safe_td_rate = sum(safe_td_rates) / len(safe_td_rates) if safe_td_rates else -1
+
+    total_safe_td = sum(r["safe_touchdown_count"] for r in results)
+    total_unsafe_td = sum(r["unsafe_touchdown_count"] for r in results)
+
+    viol_rates = [r["swing_clearance_violation_rate"] for r in results]
+    mean_viol_rate = sum(viol_rates) / len(viol_rates) if viol_rates else 0
+
     print("\n" + "=" * 70)
     print(f"EVALUATION: {terrain_label.upper()} TERRAIN")
     print("=" * 70)
-    print(f"  Task:               {args_cli.task}")
-    print(f"  Run:                {args_cli.load_run}")
-    print(f"  Checkpoint:         {args_cli.checkpoint}")
-    print(f"  Episodes:           {total}")
-    print(f"  Success rate:       {success_rate:.1f}%")
-    print(f"  Fall rate:          {100 - success_rate:.1f}%")
-    print(f"  Mean vel error xy:  {mean_vel_err:.4f} m/s")
-    print(f"  Mean distance:      {mean_dist:.2f} m")
-    print(f"  Mean time survived: {mean_time:.2f} s")
-    print(f"  Mean terrain level: {mean_tl:.2f}")
-    print(f"  Mean episode return:{mean_ret:.2f}")
     print(f"  Mean track reward:  {mean_tr:.4f}")
+    print(f"  Safe touchdown rate:{mean_safe_td_rate:.3f}" if mean_safe_td_rate >= 0 else f"  Safe touchdown rate: N/A (no touchdowns)")
+    print(f"  Total safe/unsafe TD:{total_safe_td:.0f} / {total_unsafe_td:.0f}")
+    print(f"  Mean swing viol rate:{mean_viol_rate:.4f}")
     print("=" * 70)
 
     csv_path = os.path.join(log_dir, args_cli.out)
@@ -262,6 +311,9 @@ def main(
         "velocity_error_xy", "velocity_error_yaw", "distance_traveled",
         "time_survived", "terrain_level", "episode_return", "track_reward",
         "fall_pos_x", "fall_pos_y",
+        "safe_touchdown_count", "unsafe_touchdown_count",
+        "safe_touchdown_rate", "swing_clearance_violation_steps",
+        "swing_clearance_violation_rate",
     ]
     with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
