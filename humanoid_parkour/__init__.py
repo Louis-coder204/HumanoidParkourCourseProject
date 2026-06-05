@@ -8,6 +8,7 @@ for the Isaac Lab task registry. Task IDs include:
     Isaac-Velocity-Parkour-NoHeightScan-G1-v0
     Isaac-Velocity-Parkour-Replay-G1-v0
     Isaac-Velocity-Parkour-Adaptive-G1-v0
+    Isaac-Velocity-Hiking-Adaptive-G1-v0
     (plus corresponding Play variants)
 """
 
@@ -153,5 +154,25 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1ParkourZeroShapingEnvCfg_PLAY",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1ParkourZeroShapingPPORunnerCfg",
+    },
+)
+
+# Hiking Adaptive
+gym.register(
+    id="Isaac-Velocity-Hiking-Adaptive-G1-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingAdaptiveEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingAdaptivePPORunnerCfg",
+    },
+)
+gym.register(
+    id="Isaac-Velocity-Hiking-Adaptive-G1-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingAdaptiveEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingAdaptivePPORunnerCfg",
     },
 )

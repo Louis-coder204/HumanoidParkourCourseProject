@@ -65,3 +65,8 @@ class G1ParkourReplayPPORunnerCfg(G1ParkourPPORunnerCfg):
 @configclass
 class G1ParkourAdaptivePPORunnerCfg(G1ParkourPPORunnerCfg):
     experiment_name = "g1_parkour_adaptive"
+
+
+@configclass
+class G1HikingAdaptivePPORunnerCfg(G1ParkourPPORunnerCfg):
+    experiment_name = "g1_hiking_adaptive"

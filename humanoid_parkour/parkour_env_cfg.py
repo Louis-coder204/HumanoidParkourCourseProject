@@ -609,3 +609,51 @@ class G1ParkourAdaptiveEnvCfg_PLAY(G1ParkourAdaptiveEnvCfg):
         self.observations.policy.enable_corruption = False
         self.events.base_external_force_torque = None
         self.events.push_robot = None
+
+
+##
+# Hiking Adaptive: PARKOUR_TERRAINS_CFG + adaptive curriculum + foothold safety rewards
+##
+
+@configclass
+class G1HikingRewards(G1ParkourRewards):
+    """Hiking rewards: extends parkour rewards with foothold safety terms (initially weight=0)."""
+    pass
+
+
+@configclass
+class G1HikingAdaptiveEnvCfg(G1ParkourAdaptiveEnvCfg):
+    """Hiking in the Wild: adaptive curriculum + parkour terrain + foothold safety.
+
+    Inherits the adaptive curriculum (terrain_levels_vel_adaptive) but swaps
+    the terrain generator from ROUGH_TERRAINS_CFG to PARKOUR_TERRAINS_CFG.
+    """
+
+    rewards: G1HikingRewards = G1HikingRewards()
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.scene.terrain.terrain_generator = PARKOUR_TERRAINS_CFG
+        self.scene.terrain.max_init_terrain_level = 2
+
+
+@configclass
+class G1HikingAdaptiveEnvCfg_PLAY(G1HikingAdaptiveEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        self.episode_length_s = 40.0
+        self.scene.terrain.max_init_terrain_level = None
+        if self.scene.terrain.terrain_generator is not None:
+            self.scene.terrain.terrain_generator.num_rows = 5
+            self.scene.terrain.terrain_generator.num_cols = 5
+            self.scene.terrain.terrain_generator.curriculum = False
+        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.heading = (0.0, 0.0)
+        self.observations.policy.enable_corruption = False
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
