@@ -71,7 +71,12 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 
 from isaaclab.managers import SceneEntityCfg
 
-from humanoid_parkour.hiking_mdp import _foothold_safe_mask, _detect_first_contact, _nearest_height_patch
+try:
+    from humanoid_parkour.hiking_mdp import _foothold_safe_mask, _detect_first_contact, _nearest_height_patch
+except ImportError:
+    from isaaclab_tasks.manager_based.locomotion.velocity.config.g1_parkour.hiking_mdp import (  # noqa: E501
+        _foothold_safe_mask, _detect_first_contact, _nearest_height_patch,
+    )
 
 
 @hydra_task_config(args_cli.task, args_cli.agent)

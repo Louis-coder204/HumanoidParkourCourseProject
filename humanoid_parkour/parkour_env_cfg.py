@@ -19,7 +19,7 @@ from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import LocomotionVelocityRoughEnvCfg, RewardsCfg
 
-import humanoid_parkour.hiking_mdp as hiking_mdp
+from . import hiking_mdp
 
 ##
 # Pre-defined configs
