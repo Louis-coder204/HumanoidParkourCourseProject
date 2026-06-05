@@ -176,3 +176,43 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingAdaptivePPORunnerCfg",
     },
 )
+
+# Hiking Ablation: No Touchdown Rewards
+gym.register(
+    id="Isaac-Velocity-Hiking-Adaptive-NoTouchdown-G1-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingNoTouchdownEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingNoTouchdownPPORunnerCfg",
+    },
+)
+gym.register(
+    id="Isaac-Velocity-Hiking-Adaptive-NoTouchdown-G1-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingNoTouchdownEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingNoTouchdownPPORunnerCfg",
+    },
+)
+
+# Hiking Ablation: No Clearance / Stance Edge
+gym.register(
+    id="Isaac-Velocity-Hiking-Adaptive-NoClearance-G1-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingNoClearanceEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingNoClearancePPORunnerCfg",
+    },
+)
+gym.register(
+    id="Isaac-Velocity-Hiking-Adaptive-NoClearance-G1-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingNoClearanceEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingNoClearancePPORunnerCfg",
+    },
+)

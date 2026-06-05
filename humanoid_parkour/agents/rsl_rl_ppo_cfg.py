@@ -70,3 +70,13 @@ class G1ParkourAdaptivePPORunnerCfg(G1ParkourPPORunnerCfg):
 @configclass
 class G1HikingAdaptivePPORunnerCfg(G1ParkourPPORunnerCfg):
     experiment_name = "g1_hiking_adaptive"
+
+
+@configclass
+class G1HikingNoTouchdownPPORunnerCfg(G1ParkourPPORunnerCfg):
+    experiment_name = "g1_hiking_notouchdown"
+
+
+@configclass
+class G1HikingNoClearancePPORunnerCfg(G1ParkourPPORunnerCfg):
+    experiment_name = "g1_hiking_noclearance"

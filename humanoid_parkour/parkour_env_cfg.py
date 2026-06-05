@@ -720,3 +720,73 @@ class G1HikingAdaptiveEnvCfg_PLAY(G1HikingAdaptiveEnvCfg):
         self.observations.policy.enable_corruption = False
         self.events.base_external_force_torque = None
         self.events.push_robot = None
+
+
+##
+# Hiking Ablation A: No Touchdown Rewards
+##
+
+@configclass
+class G1HikingNoTouchdownEnvCfg(G1HikingAdaptiveEnvCfg):
+    """Ablation: safe/unsafe touchdown rewards disabled."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.rewards.safe_touchdown.weight = 0.0
+        self.rewards.unsafe_touchdown.weight = 0.0
+
+
+@configclass
+class G1HikingNoTouchdownEnvCfg_PLAY(G1HikingNoTouchdownEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        self.episode_length_s = 40.0
+        self.scene.terrain.max_init_terrain_level = None
+        if self.scene.terrain.terrain_generator is not None:
+            self.scene.terrain.terrain_generator.num_rows = 5
+            self.scene.terrain.terrain_generator.num_cols = 5
+            self.scene.terrain.terrain_generator.curriculum = False
+        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.heading = (0.0, 0.0)
+        self.observations.policy.enable_corruption = False
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
+
+
+##
+# Hiking Ablation B: No Clearance / Stance Edge Risks
+##
+
+@configclass
+class G1HikingNoClearanceEnvCfg(G1HikingAdaptiveEnvCfg):
+    """Ablation: swing clearance and stance edge risk rewards disabled."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.rewards.swing_clearance.weight = 0.0
+        self.rewards.stance_edge_risk.weight = 0.0
+
+
+@configclass
+class G1HikingNoClearanceEnvCfg_PLAY(G1HikingNoClearanceEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        self.episode_length_s = 40.0
+        self.scene.terrain.max_init_terrain_level = None
+        if self.scene.terrain.terrain_generator is not None:
+            self.scene.terrain.terrain_generator.num_rows = 5
+            self.scene.terrain.terrain_generator.num_cols = 5
+            self.scene.terrain.terrain_generator.curriculum = False
+        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.heading = (0.0, 0.0)
+        self.observations.policy.enable_corruption = False
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
