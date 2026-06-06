@@ -177,6 +177,26 @@ gym.register(
     },
 )
 
+# Hiking TerrainOnly
+gym.register(
+    id="Isaac-Velocity-HikingTerrainOnly-Adaptive-G1-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingTerrainOnlyEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingTerrainOnlyPPORunnerCfg",
+    },
+)
+gym.register(
+    id="Isaac-Velocity-HikingTerrainOnly-Adaptive-G1-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingTerrainOnlyEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingTerrainOnlyPPORunnerCfg",
+    },
+)
+
 # Hiking Ablation: No Touchdown Rewards
 gym.register(
     id="Isaac-Velocity-Hiking-Adaptive-NoTouchdown-G1-v0",

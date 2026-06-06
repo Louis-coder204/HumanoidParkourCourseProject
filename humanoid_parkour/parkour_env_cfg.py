@@ -621,45 +621,43 @@ class G1ParkourAdaptiveEnvCfg_PLAY(G1ParkourAdaptiveEnvCfg):
 class G1HikingRewards(G1ParkourRewards):
     """Hiking rewards: extends parkour rewards with foothold safety terms.
 
-    Safety terms are initially weight=0 (V2: metrics-only phase).
-    Increase weights in V3 to activate foothold safety shaping.
+    Version A (loose metric): relaxed thresholds for eval diagnostics.
+    All weights set to 0 — safety terms are metrics-only.
     """
 
     safe_touchdown = RewTerm(
         func=hiking_mdp.safe_touchdown,
-        weight=0.30,
+        weight=0.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
             "height_sensor_cfg": SceneEntityCfg("height_scanner"),
             "k": 9,
-            "foot_radius": 0.12,
-            "max_height_var": 0.055,
-            "max_foot_terrain_gap": 0.16,
-            "min_support_rays": 3,
+            "foot_radius": 0.16,
+            "max_height_var": 0.10,
+            "min_support_rays": 2,
         },
     )
 
     unsafe_touchdown = RewTerm(
         func=hiking_mdp.unsafe_touchdown,
-        weight=-0.60,
+        weight=0.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
             "height_sensor_cfg": SceneEntityCfg("height_scanner"),
             "k": 9,
-            "foot_radius": 0.12,
-            "max_height_var": 0.055,
-            "max_foot_terrain_gap": 0.16,
-            "min_support_rays": 3,
+            "foot_radius": 0.16,
+            "max_height_var": 0.10,
+            "min_support_rays": 2,
         },
     )
 
     swing_clearance = RewTerm(
         func=hiking_mdp.swing_clearance,
-        weight=-0.10,
+        weight=0.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
@@ -670,16 +668,15 @@ class G1HikingRewards(G1ParkourRewards):
 
     stance_edge_risk = RewTerm(
         func=hiking_mdp.stance_edge_risk,
-        weight=-0.08,
+        weight=0.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
             "height_sensor_cfg": SceneEntityCfg("height_scanner"),
             "k": 9,
-            "foot_radius": 0.12,
-            "max_height_var": 0.055,
-            "max_foot_terrain_gap": 0.16,
-            "min_support_rays": 3,
+            "foot_radius": 0.16,
+            "max_height_var": 0.10,
+            "min_support_rays": 2,
         },
     )
 
@@ -703,6 +700,46 @@ class G1HikingAdaptiveEnvCfg(G1ParkourAdaptiveEnvCfg):
 
 @configclass
 class G1HikingAdaptiveEnvCfg_PLAY(G1HikingAdaptiveEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        self.episode_length_s = 40.0
+        self.scene.terrain.max_init_terrain_level = None
+        if self.scene.terrain.terrain_generator is not None:
+            self.scene.terrain.terrain_generator.num_rows = 5
+            self.scene.terrain.terrain_generator.num_cols = 5
+            self.scene.terrain.terrain_generator.curriculum = False
+        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.heading = (0.0, 0.0)
+        self.observations.policy.enable_corruption = False
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
+
+
+##
+# Hiking TerrainOnly: PARKOUR terrain + Adaptive curriculum, no foothold reward
+##
+
+@configclass
+class G1HikingTerrainOnlyEnvCfg(G1HikingAdaptiveEnvCfg):
+    """Hiking TerrainOnly: adaptive curriculum + PARKOUR terrain, foothold rewards at 0.
+
+    Identical to G1HikingAdaptiveEnvCfg but registered as a separate task
+    for clarity in experiments. Foothold safety terms log metrics but don't
+    influence reward (G1HikingRewards already has all weights=0).
+
+    Purpose: verify that Adaptive curriculum alone can learn PARKOUR terrain.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+
+
+@configclass
+class G1HikingTerrainOnlyEnvCfg_PLAY(G1HikingTerrainOnlyEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         self.scene.num_envs = 50

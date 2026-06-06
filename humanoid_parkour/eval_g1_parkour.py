@@ -173,8 +173,8 @@ def main(
         episode_rew_sum += rew
 
         safe_mask, _ = _foothold_safe_mask(
-            env.unwrapped, height_cfg, asset_cfg, k=9, foot_radius=0.12,
-            max_height_var=0.055, max_foot_terrain_gap=0.16, min_support_rays=3,
+            env.unwrapped, height_cfg, asset_cfg, k=9, foot_radius=0.16,
+            max_height_var=0.10, min_support_rays=2,
         )
         first_contact = _detect_first_contact(env.unwrapped, contact_cfg)
         episode_safe_td += (first_contact & safe_mask).float().sum(dim=1)

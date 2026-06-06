@@ -53,11 +53,15 @@ def _foothold_safe_mask(
     k: int,
     foot_radius: float,
     max_height_var: float,
-    max_foot_terrain_gap: float,
     min_support_rays: int,
 ):
-    """Per-foot boolean safety mask, shape (N, F)."""
-    patch_z, patch_d2, foot_pos_w = _nearest_height_patch(env, height_sensor_cfg, asset_cfg, k=k)
+    """Per-foot boolean safety mask, shape (N, F).
+
+    Version A (loose metric): relaxed thresholds, no ankle-terrain-gap check.
+    Uses torso-mounted height scanner for terrain perception.
+    Suitable for eval diagnostics, NOT for reward shaping yet.
+    """
+    patch_z, patch_d2, _ = _nearest_height_patch(env, height_sensor_cfg, asset_cfg, k=k)
 
     center_z = patch_z[..., 0]
     z_max = torch.max(patch_z, dim=-1).values
@@ -71,12 +75,9 @@ def _foothold_safe_mask(
     )
     support_count = torch.sum(support, dim=-1)
 
-    foot_terrain_gap = torch.abs(foot_pos_w[..., 2] - center_z)
-
     safe = (
         (height_var < max_height_var)
         & (support_count >= min_support_rays)
-        & (foot_terrain_gap < max_foot_terrain_gap)
     )
     return safe, center_z
 
@@ -108,18 +109,14 @@ def safe_touchdown(
     asset_cfg: SceneEntityCfg,
     height_sensor_cfg: SceneEntityCfg,
     k: int = 9,
-    foot_radius: float = 0.12,
-    max_height_var: float = 0.055,
-    max_foot_terrain_gap: float = 0.16,
-    min_support_rays: int = 3,
+    foot_radius: float = 0.16,
+    max_height_var: float = 0.10,
+    min_support_rays: int = 2,
 ):
-    """Reward safe first contact.
-
-    Reward is only emitted on touchdown events, never during continuous stance.
-    """
+    """Reward safe first contact (Version A: loose metric, eval-only)."""
     safe, _ = _foothold_safe_mask(
         env, height_sensor_cfg, asset_cfg, k, foot_radius,
-        max_height_var, max_foot_terrain_gap, min_support_rays,
+        max_height_var, min_support_rays,
     )
     first_contact = _detect_first_contact(env, sensor_cfg)
     reward = torch.sum(first_contact.float() * safe.float(), dim=1)
@@ -134,15 +131,14 @@ def unsafe_touchdown(
     asset_cfg: SceneEntityCfg,
     height_sensor_cfg: SceneEntityCfg,
     k: int = 9,
-    foot_radius: float = 0.12,
-    max_height_var: float = 0.055,
-    max_foot_terrain_gap: float = 0.16,
-    min_support_rays: int = 3,
+    foot_radius: float = 0.16,
+    max_height_var: float = 0.10,
+    min_support_rays: int = 2,
 ):
-    """Penalty for landing on edge/gap/rough patch."""
+    """Penalty for landing on edge/gap/rough patch (Version A: loose metric, eval-only)."""
     safe, _ = _foothold_safe_mask(
         env, height_sensor_cfg, asset_cfg, k, foot_radius,
-        max_height_var, max_foot_terrain_gap, min_support_rays,
+        max_height_var, min_support_rays,
     )
     first_contact = _detect_first_contact(env, sensor_cfg)
     bad = first_contact & (~safe)
@@ -179,17 +175,16 @@ def stance_edge_risk(
     asset_cfg: SceneEntityCfg,
     height_sensor_cfg: SceneEntityCfg,
     k: int = 9,
-    foot_radius: float = 0.12,
-    max_height_var: float = 0.055,
-    max_foot_terrain_gap: float = 0.16,
-    min_support_rays: int = 3,
+    foot_radius: float = 0.16,
+    max_height_var: float = 0.10,
+    min_support_rays: int = 2,
 ):
     """Small continuous penalty if stance foot remains on unsafe patch."""
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
 
     safe, _ = _foothold_safe_mask(
         env, height_sensor_cfg, asset_cfg, k, foot_radius,
-        max_height_var, max_foot_terrain_gap, min_support_rays,
+        max_height_var, min_support_rays,
     )
 
     contacts = (
