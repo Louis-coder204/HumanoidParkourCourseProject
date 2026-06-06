@@ -30,14 +30,18 @@ def _nearest_height_patch(
 
     d2 = torch.sum((ray_xy[:, None, :, :] - foot_xy[:, :, None, :]) ** 2, dim=-1)
 
-    valid = torch.isfinite(ray_z)
+    valid = torch.isfinite(ray_z) & torch.isfinite(ray_xy).all(dim=-1)
     d2 = torch.where(valid[:, None, :], d2, torch.full_like(d2, float("inf")))
 
     idx = torch.topk(d2, k=k, dim=-1, largest=False).indices
 
     ray_z_expand = ray_z[:, None, :].expand(-1, foot_xy.shape[1], -1)
+    ray_z_expand = torch.nan_to_num(ray_z_expand, nan=0.0, posinf=0.0, neginf=0.0)
     patch_z = torch.gather(ray_z_expand, dim=2, index=idx)
     patch_d2 = torch.gather(d2, dim=2, index=idx)
+
+    patch_z = torch.nan_to_num(patch_z, nan=0.0, posinf=0.0, neginf=0.0)
+    patch_d2 = torch.nan_to_num(patch_d2, nan=float("inf"), posinf=float("inf"), neginf=float("inf"))
 
     return patch_z, patch_d2, foot_pos_w
 
@@ -85,6 +89,7 @@ def _detect_first_contact(env, sensor_cfg: SceneEntityCfg):
     """
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     contact_time = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids]
+    contact_time = torch.nan_to_num(contact_time, nan=0.0)
 
     first_contact = (contact_time > 0.0) & (contact_time <= env.step_dt * 1.5)
     return first_contact
@@ -119,7 +124,7 @@ def safe_touchdown(
     first_contact = _detect_first_contact(env, sensor_cfg)
     reward = torch.sum(first_contact.float() * safe.float(), dim=1)
     reward *= _command_gate(env, command_name)
-    return reward
+    return torch.nan_to_num(reward, nan=0.0)
 
 
 def unsafe_touchdown(
@@ -143,7 +148,7 @@ def unsafe_touchdown(
     bad = first_contact & (~safe)
     penalty = torch.sum(bad.float(), dim=1)
     penalty *= _command_gate(env, command_name)
-    return penalty
+    return torch.nan_to_num(penalty, nan=0.0)
 
 
 def swing_clearance(
@@ -165,7 +170,7 @@ def swing_clearance(
     in_swing = air_time > 0.03
 
     penalty = torch.clamp(min_clearance - clearance, min=0.0)
-    return torch.sum(penalty * in_swing.float(), dim=1)
+    return torch.nan_to_num(torch.sum(penalty * in_swing.float(), dim=1), nan=0.0)
 
 
 def stance_edge_risk(
@@ -195,4 +200,4 @@ def stance_edge_risk(
     )
 
     risk = contacts & (~safe)
-    return torch.sum(risk.float(), dim=1)
+    return torch.nan_to_num(torch.sum(risk.float(), dim=1), nan=0.0)
