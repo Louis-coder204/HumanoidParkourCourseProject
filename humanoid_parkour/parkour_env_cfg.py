@@ -760,6 +760,105 @@ class G1HikingTerrainOnlyEnvCfg_PLAY(G1HikingTerrainOnlyEnvCfg):
 
 
 ##
+# Hiking SafetyLite: tri-class foothold detector + tiny safety reward fine-tune
+##
+
+@configclass
+class G1HikingSafetyLiteRewards(G1HikingRewards):
+    """SafetyLite rewards: tri-class v2 detector with minimal weights.
+    Only high-confidence safe/unsafe events. Uncertain touchdowns ignored.
+    """
+
+    safe_touchdown = RewTerm(
+        func=hiking_mdp.safe_touchdown_v2,
+        weight=0.02,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "k": 9,
+            "foot_radius": 0.16,
+            "safe_height_var": 0.08,
+            "unsafe_height_var": 0.16,
+            "safe_min_support": 3,
+            "unsafe_max_support": 1,
+            "min_finite_rays": 2,
+        },
+    )
+
+    unsafe_touchdown = RewTerm(
+        func=hiking_mdp.unsafe_touchdown_v2,
+        weight=-0.02,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "k": 9,
+            "foot_radius": 0.16,
+            "safe_height_var": 0.08,
+            "unsafe_height_var": 0.16,
+            "safe_min_support": 3,
+            "unsafe_max_support": 1,
+            "min_finite_rays": 2,
+        },
+    )
+
+    swing_clearance = RewTerm(
+        func=hiking_mdp.swing_clearance,
+        weight=-0.01,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+            "min_clearance": 0.06,
+        },
+    )
+
+    stance_edge_risk = RewTerm(
+        func=hiking_mdp.stance_edge_risk,
+        weight=0.0,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+            "height_sensor_cfg": SceneEntityCfg("height_scanner"),
+        },
+    )
+
+
+@configclass
+class G1HikingSafetyLiteEnvCfg(G1HikingTerrainOnlyEnvCfg):
+    """SafetyLite: TerrainOnly + tri-class foothold safety fine-tune."""
+
+    rewards: G1HikingSafetyLiteRewards = G1HikingSafetyLiteRewards()
+
+    def __post_init__(self):
+        super().__post_init__()
+
+
+@configclass
+class G1HikingSafetyLiteEnvCfg_PLAY(G1HikingSafetyLiteEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        self.episode_length_s = 40.0
+        self.scene.terrain.max_init_terrain_level = None
+        if self.scene.terrain.terrain_generator is not None:
+            self.scene.terrain.terrain_generator.num_rows = 5
+            self.scene.terrain.terrain_generator.num_cols = 5
+            self.scene.terrain.terrain_generator.curriculum = False
+        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.heading = (0.0, 0.0)
+        self.observations.policy.enable_corruption = False
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
+
+
+##
 # Hiking Ablation A: No Touchdown Rewards
 ##
 

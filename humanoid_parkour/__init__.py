@@ -197,6 +197,26 @@ gym.register(
     },
 )
 
+# Hiking SafetyLite
+gym.register(
+    id="Isaac-Velocity-HikingSafetyLite-G1-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingSafetyLiteEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingSafetyLitePPORunnerCfg",
+    },
+)
+gym.register(
+    id="Isaac-Velocity-HikingSafetyLite-G1-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{PACKAGE_NAME}.parkour_env_cfg:G1HikingSafetyLiteEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}:G1HikingSafetyLitePPORunnerCfg",
+    },
+)
+
 # Hiking Ablation: No Touchdown Rewards
 gym.register(
     id="Isaac-Velocity-Hiking-Adaptive-NoTouchdown-G1-v0",

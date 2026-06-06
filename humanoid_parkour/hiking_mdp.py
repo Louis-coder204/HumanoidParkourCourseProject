@@ -196,3 +196,143 @@ def stance_edge_risk(
 
     risk = contacts & (~safe)
     return torch.nan_to_num(torch.sum(risk.float(), dim=1), nan=0.0)
+
+
+# ──────────────────────────────────────────────────────────────
+# Version 2: tri-class detector (safe / unsafe / uncertain)
+# ──────────────────────────────────────────────────────────────
+
+
+def _foothold_safety_masks_v2(
+    env,
+    height_sensor_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg,
+    k: int = 9,
+    foot_radius: float = 0.16,
+    safe_height_var: float = 0.08,
+    unsafe_height_var: float = 0.16,
+    safe_min_support: int = 3,
+    unsafe_max_support: int = 1,
+    min_finite_rays: int = 2,
+):
+    """Return high-confidence safe / unsafe / uncertain foothold masks.
+
+    Output shape:
+        safe:      (num_envs, num_feet)
+        unsafe:    (num_envs, num_feet)
+        uncertain: (num_envs, num_feet)
+
+    Key: unsafe is NOT ~safe. Uncertain touchdown is ignored by reward.
+    """
+    patch_z, patch_d2, _ = _nearest_height_patch(
+        env, height_sensor_cfg=height_sensor_cfg, asset_cfg=asset_cfg, k=k,
+    )
+
+    valid = torch.isfinite(patch_z)
+    finite_count = torch.sum(valid, dim=-1)
+
+    z_for_max = torch.where(valid, patch_z, torch.full_like(patch_z, -1.0e6))
+    z_for_min = torch.where(valid, patch_z, torch.full_like(patch_z, 1.0e6))
+    z_max = torch.max(z_for_max, dim=-1).values
+    z_min = torch.min(z_for_min, dim=-1).values
+    height_var = z_max - z_min
+
+    center_z = patch_z[..., 0]
+    center_valid = torch.isfinite(center_z)
+
+    support = (
+        valid
+        & center_valid.unsqueeze(-1)
+        & (patch_d2 < foot_radius ** 2)
+        & (torch.abs(patch_z - center_z.unsqueeze(-1)) < safe_height_var)
+    )
+    support_count = torch.sum(support, dim=-1)
+
+    safe = (
+        (finite_count >= safe_min_support)
+        & (height_var < safe_height_var)
+        & (support_count >= safe_min_support)
+    )
+
+    unsafe = (
+        (finite_count < min_finite_rays)
+        | (height_var > unsafe_height_var)
+        | (support_count <= unsafe_max_support)
+    )
+
+    unsafe = unsafe & (~safe)
+
+    uncertain = ~(safe | unsafe)
+
+    return safe, unsafe, uncertain, height_var, support_count, finite_count
+
+
+def safe_touchdown_v2(
+    env,
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg,
+    height_sensor_cfg: SceneEntityCfg,
+    k: int = 9,
+    foot_radius: float = 0.16,
+    safe_height_var: float = 0.08,
+    unsafe_height_var: float = 0.16,
+    safe_min_support: int = 3,
+    unsafe_max_support: int = 1,
+    min_finite_rays: int = 2,
+):
+    """Reward high-confidence safe touchdown events."""
+    safe, unsafe, uncertain, _, _, _ = _foothold_safety_masks_v2(
+        env,
+        height_sensor_cfg=height_sensor_cfg,
+        asset_cfg=asset_cfg,
+        k=k,
+        foot_radius=foot_radius,
+        safe_height_var=safe_height_var,
+        unsafe_height_var=unsafe_height_var,
+        safe_min_support=safe_min_support,
+        unsafe_max_support=unsafe_max_support,
+        min_finite_rays=min_finite_rays,
+    )
+
+    first_contact = _detect_first_contact(env, sensor_cfg)
+    reward = torch.sum(first_contact.float() * safe.float(), dim=1)
+    reward *= _command_gate(env, command_name)
+    return torch.nan_to_num(reward, nan=0.0)
+
+
+def unsafe_touchdown_v2(
+    env,
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg,
+    height_sensor_cfg: SceneEntityCfg,
+    k: int = 9,
+    foot_radius: float = 0.16,
+    safe_height_var: float = 0.08,
+    unsafe_height_var: float = 0.16,
+    safe_min_support: int = 3,
+    unsafe_max_support: int = 1,
+    min_finite_rays: int = 2,
+):
+    """Penalty term for high-confidence unsafe touchdown events.
+
+    Returns positive count. The reward config assigns negative weight.
+    """
+    safe, unsafe, uncertain, _, _, _ = _foothold_safety_masks_v2(
+        env,
+        height_sensor_cfg=height_sensor_cfg,
+        asset_cfg=asset_cfg,
+        k=k,
+        foot_radius=foot_radius,
+        safe_height_var=safe_height_var,
+        unsafe_height_var=unsafe_height_var,
+        safe_min_support=safe_min_support,
+        unsafe_max_support=unsafe_max_support,
+        min_finite_rays=min_finite_rays,
+    )
+
+    first_contact = _detect_first_contact(env, sensor_cfg)
+    penalty = torch.sum(first_contact.float() * unsafe.float(), dim=1)
+    penalty *= _command_gate(env, command_name)
+    return torch.nan_to_num(penalty, nan=0.0)
