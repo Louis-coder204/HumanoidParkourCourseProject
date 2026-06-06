@@ -80,9 +80,6 @@ class G1HikingTerrainOnlyPPORunnerCfg(G1ParkourPPORunnerCfg):
 @configclass
 class G1HikingSafetyLitePPORunnerCfg(G1ParkourPPORunnerCfg):
     experiment_name = "g1_hiking_safety_lite"
-    resume = True
-    load_run = "2026-06-06_20-21-45_hiking_terrain_only_v1"
-    load_checkpoint = "model_2999.pt"
 
 
 @configclass
