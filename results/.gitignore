@@ -1,0 +1,2 @@
+# Results - model checkpoints are too large for git
+results/*/model_*.pt
