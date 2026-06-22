@@ -102,6 +102,12 @@ def main(
         if max_tl is None:
             env_cfg.scene.terrain.terrain_generator.curriculum = False
 
+    if args_cli.video:
+        env_cfg.viewer.origin_type = "asset_root"
+        env_cfg.viewer.asset_name = "robot"
+        env_cfg.viewer.eye = (-3.0, 3.0, 2.0)
+        env_cfg.viewer.lookat = (0.5, 0.0, 0.6)
+
     log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Loading experiment from: {log_root_path}")
